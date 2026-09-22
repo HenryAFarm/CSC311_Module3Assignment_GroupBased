@@ -42,31 +42,83 @@ package org.example.csc311_module3assignment_groupbased;
 
 import javafx.application.Application;
 import javafx.scene.Scene;
+import javafx.scene.image.PixelReader;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.Pane;
 import javafx.stage.Stage;
 
-import java.io.IOException;
-
 public class HelloApplication extends Application {
-        @Override
-        public void start(Stage stage) {
+    private static final double MOVE_DISTANCE = 5;
+    private static final double ROBOT_MARGIN = 1;
 
-            //Since this is testing, it will change!
-            //Testing to see the image(of robot) popping up!
-            //This gets the image from resource under images
-            Image image = new Image(getClass().getResourceAsStream("/images/robot.png"));
-            ImageView robot = new ImageView(image);
+    @Override
+    public void start(Stage stage) {
+        Image mazeImage = new Image(getClass().getResourceAsStream("/images/maze.png"));
+        Image robotImage = new Image(getClass().getResourceAsStream("/images/robot.png"));
+        PixelReader mazePixels = mazeImage.getPixelReader();
 
-            robot.setX(100);
-            robot.setY(100);
+        ImageView maze = new ImageView(mazeImage);
+        ImageView robot = new ImageView(robotImage);
+        robot.setX(45);
+        robot.setY(35);
 
-            Pane root = new Pane(robot);
-            Scene scene = new Scene(root, 800, 600);
+        Pane root = new Pane(maze, robot);
+        root.setFocusTraversable(true);
+        Scene scene = new Scene(root, mazeImage.getWidth(), mazeImage.getHeight());
 
-            stage.setScene(scene);
-            stage.show();
+        scene.setOnKeyPressed(event -> {
+            double nextX = robot.getX();
+            double nextY = robot.getY();
+
+            if (event.getCode() == KeyCode.LEFT) {
+                nextX -= MOVE_DISTANCE;
+            } else if (event.getCode() == KeyCode.RIGHT) {
+                nextX += MOVE_DISTANCE;
+            } else if (event.getCode() == KeyCode.UP) {
+                nextY -= MOVE_DISTANCE;
+            } else if (event.getCode() == KeyCode.DOWN) {
+                nextY += MOVE_DISTANCE;
+            } else {
+                return;
+            }
+
+            if (canMove(robot, nextX, nextY, mazePixels, mazeImage)) {
+                robot.setX(nextX);
+                robot.setY(nextY);
+            }
+        });
+
+        stage.setTitle("Robot Maze");
+        stage.setScene(scene);
+        stage.show();
+        scene.getRoot().requestFocus();
+    }
+
+    private boolean canMove(ImageView robot, double x, double y,
+                            PixelReader mazePixels, Image mazeImage) {
+        double left = x + ROBOT_MARGIN;
+        double right = x + robot.getImage().getWidth() - ROBOT_MARGIN;
+        double top = y + ROBOT_MARGIN;
+        double bottom = y + robot.getImage().getHeight() - ROBOT_MARGIN;
+
+        return isWalkable(left, top, mazePixels, mazeImage)
+                && isWalkable(right, top, mazePixels, mazeImage)
+                && isWalkable(left, bottom, mazePixels, mazeImage)
+                && isWalkable(right, bottom, mazePixels, mazeImage);
+    }
+
+    private boolean isWalkable(double x, double y, PixelReader mazePixels, Image mazeImage) {
+        int pixelX = (int) Math.floor(x);
+        int pixelY = (int) Math.floor(y);
+
+        if (pixelX < 0 || pixelY < 0
+                || pixelX >= mazeImage.getWidth()
+                || pixelY >= mazeImage.getHeight()) {
+            return false;
         }
 
+        return mazePixels.getColor(pixelX, pixelY).getBrightness() > 0.8;
+    }
 }
