@@ -47,7 +47,10 @@ import javafx.scene.image.PixelReader;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.control.Button;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
 import javafx.scene.layout.Pane;
 import javafx.stage.Stage;
 
@@ -76,13 +79,30 @@ public class HelloApplication extends Application {
         robot.setX(START_X);
         robot.setY(START_Y);
 
-        Pane root = new Pane(maze, robot);
-        root.setFocusTraversable(true);
+        Pane robotRoot = new Pane(maze, robot);
+        robotRoot.setFocusTraversable(true);
         Button autoSolveButton = new Button("Auto Solve");
         autoSolveButton.setLayoutX(10);
         autoSolveButton.setLayoutY(mazeImage.getHeight() + 10);
-        root.getChildren().add(autoSolveButton);
-        Scene scene = new Scene(root, mazeImage.getWidth(), mazeImage.getHeight() + 50);
+        robotRoot.getChildren().add(autoSolveButton);
+
+        Pane carRoot = CarMazeScreen.createContent();
+        Tab robotTab = new Tab("Robot Maze", robotRoot);
+        robotTab.setClosable(false);
+        Tab carTab = new Tab("Car Maze", carRoot);
+        carTab.setClosable(false);
+        TabPane tabPane = new TabPane(robotTab, carTab);
+        tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        tabPane.getSelectionModel().selectedItemProperty().addListener(
+                (observable, previousTab, selectedTab) -> {
+                    if (selectedTab == robotTab) {
+                        robotRoot.requestFocus();
+                    } else if (selectedTab == carTab) {
+                        carRoot.requestFocus();
+                    }
+                });
+
+        Scene scene = new Scene(tabPane, mazeImage.getWidth(), mazeImage.getHeight() + 80);
 
         AnimationTimer[] animation = new AnimationTimer[1];
         List<Position>[] path = new List[]{Collections.singletonList(
@@ -116,10 +136,22 @@ public class HelloApplication extends Application {
             nextPathPosition[0] = 1;
             lastAnimationUpdate[0] = 0;
             animation[0].start();
-            root.requestFocus();
+            robotRoot.requestFocus();
         });
 
-        scene.setOnKeyPressed(event -> {
+        scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+            if (!isArrowKey(event.getCode())) {
+                return;
+            }
+
+            if (tabPane.getSelectionModel().getSelectedItem() == carTab) {
+                if (carRoot.getOnKeyPressed() != null) {
+                    carRoot.getOnKeyPressed().handle(event);
+                }
+                event.consume();
+                return;
+            }
+
             animation[0].stop();
             double nextX = robot.getX();
             double nextY = robot.getY();
@@ -140,12 +172,20 @@ public class HelloApplication extends Application {
                 robot.setX(nextX);
                 robot.setY(nextY);
             }
+            event.consume();
         });
 
         stage.setTitle("Robot Maze");
         stage.setScene(scene);
         stage.show();
-        scene.getRoot().requestFocus();
+        robotRoot.requestFocus();
+    }
+
+    private boolean isArrowKey(KeyCode keyCode) {
+        return keyCode == KeyCode.LEFT
+                || keyCode == KeyCode.RIGHT
+                || keyCode == KeyCode.UP
+                || keyCode == KeyCode.DOWN;
     }
 
     private List<Position> findPath(ImageView robot, PixelReader mazePixels, Image mazeImage) {
