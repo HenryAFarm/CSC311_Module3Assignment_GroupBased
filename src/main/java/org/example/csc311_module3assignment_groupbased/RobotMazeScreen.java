@@ -26,6 +26,7 @@ final class RobotMazeScreen {
     }
 
     static Pane createContent() {
+        //Setting up the image to be used in the tab
         Image mazeImage = new Image(RobotMazeScreen.class.getResourceAsStream("/images/maze.png"));
         Image robotImage = new Image(RobotMazeScreen.class.getResourceAsStream("/images/robot.png"));
         PixelReader mazePixels = mazeImage.getPixelReader();
@@ -38,11 +39,13 @@ final class RobotMazeScreen {
         Pane root = new Pane(maze, robot);
         root.setFocusTraversable(true);
 
+        //Adding the button which allows the robot to auto move the end
         Button autoSolveButton = new Button("Auto Solve");
         autoSolveButton.setLayoutX(10);
         autoSolveButton.setLayoutY(mazeImage.getHeight() + 10);
         root.getChildren().add(autoSolveButton);
 
+        //Adding animation to this, so that after the auto solve button is pressed, the robot moves to the end
         AnimationTimer[] animation = new AnimationTimer[1];
         List<Position>[] path = new List[]{Collections.singletonList(
                 new Position((int) robot.getX(), (int) robot.getY()))};
@@ -161,6 +164,7 @@ final class RobotMazeScreen {
                 && isWalkable(mazeImage.getWidth() - 1, centerY, mazePixels, mazeImage);
     }
 
+    //Allowing for the robot image to be moved
     private static boolean canMove(ImageView robot, double x, double y,
                                    PixelReader mazePixels, Image mazeImage) {
         double left = x + ROBOT_MARGIN;

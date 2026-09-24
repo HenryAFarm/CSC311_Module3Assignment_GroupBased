@@ -1,5 +1,11 @@
 package org.example.csc311_module3assignment_groupbased;
 
+/**
+ *
+ * @author Henry Arevalo, Sheraz Rahim, Paul Quigley, Muhammad Faseeh
+ *
+ */
+
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.control.Tab;
@@ -20,6 +26,7 @@ public class HelloApplication extends Application {
         Tab carTab = new Tab("Car Maze", carRoot);
         carTab.setClosable(false);
 
+        //Switching tabs in the application
         TabPane tabPane = new TabPane(robotTab, carTab);
         tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
         tabPane.getSelectionModel().selectedItemProperty().addListener(

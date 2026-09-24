@@ -37,6 +37,7 @@ final class CarMazeScreen {
     }
 
     static Pane createContent() {
+        //Using the images and calling them to be used in tab
         Image mazeImage = new Image(CarMazeScreen.class.getResourceAsStream("/images/maze2.png"));
         Image carImage = new Image(CarMazeScreen.class.getResourceAsStream("/images/car.png"));
         PixelReader mazePixels = mazeImage.getPixelReader();
@@ -49,6 +50,7 @@ final class CarMazeScreen {
         car.setX(START_X);
         car.setY(START_Y);
 
+        //adding the head lights for the car
         Circle leftLight = createHeadlight();
         Circle rightLight = createHeadlight();
         updateHeadlights(leftLight, rightLight, car, 0);
@@ -56,11 +58,13 @@ final class CarMazeScreen {
         Pane root = new Pane(maze, car, leftLight, rightLight);
         root.setFocusTraversable(true);
 
+        //adding the button that will auto-solve the maze
         Button autoSolveButton = new Button("Auto Solve");
         autoSolveButton.setLayoutX(10);
         autoSolveButton.setLayoutY(mazeImage.getHeight() + 10);
         root.getChildren().add(autoSolveButton);
 
+        //Having animation to the car
         AnimationTimer[] animation = new AnimationTimer[1];
         List<Position>[] path = new List[]{Collections.singletonList(
                 new Position((int) car.getX(), (int) car.getY()))};
@@ -89,6 +93,7 @@ final class CarMazeScreen {
             }
         };
 
+        //Setting up action for the button
         autoSolveButton.setOnAction(event -> {
             animation[0].stop();
             car.setX(START_X);
@@ -121,7 +126,7 @@ final class CarMazeScreen {
 
             Position current = new Position((int) car.getX(), (int) car.getY());
             Position next = new Position((int) nextX, (int) nextY);
-            if (canMove(car, nextX, nextY, mazePixels, mazeImage)) {
+            if (canMove(nextX, nextY, mazePixels, mazeImage)) {
                 updateHeading(car, current, next);
                 car.setX(nextX);
                 car.setY(nextY);
@@ -195,7 +200,7 @@ final class CarMazeScreen {
         Position exit = null;
         while (!queue.isEmpty()) {
             Position current = queue.remove();
-            if (isAtExit(current, car, mazePixels, mazeImage)) {
+            if (isAtExit(current, mazePixels, mazeImage)) {
                 exit = current;
                 break;
             }
@@ -206,7 +211,7 @@ final class CarMazeScreen {
                         current.y + direction[1]);
 
                 if (!previous.containsKey(next)
-                        && canMove(car, next.x, next.y, mazePixels, mazeImage)) {
+                        && canMove(next.x, next.y, mazePixels, mazeImage)) {
                     previous.put(next, current);
                     queue.add(next);
                 }
@@ -225,7 +230,7 @@ final class CarMazeScreen {
         return path;
     }
 
-    private static boolean isAtExit(Position position, ImageView car,
+    private static boolean isAtExit(Position position,
                                     PixelReader mazePixels, Image mazeImage) {
         double rightEdge = position.x + CAR_WIDTH - CAR_MARGIN;
         double centerY = position.y + CAR_HEIGHT / 2.0;
@@ -238,7 +243,8 @@ final class CarMazeScreen {
                 mazePixels, mazeImage);
     }
 
-    private static boolean canMove(ImageView car, double x, double y,
+    //Allowing image of car to be moved
+    private static boolean canMove(double x, double y,
                                    PixelReader mazePixels, Image mazeImage) {
         double left = x + CAR_MARGIN;
         double right = x + CAR_WIDTH - CAR_MARGIN;
