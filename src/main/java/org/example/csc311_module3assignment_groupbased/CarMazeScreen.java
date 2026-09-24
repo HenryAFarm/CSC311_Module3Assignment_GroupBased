@@ -7,6 +7,8 @@ import javafx.scene.image.ImageView;
 import javafx.scene.image.PixelReader;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.Pane;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -20,10 +22,16 @@ final class CarMazeScreen {
     private static final double CAR_MARGIN = 1;
     private static final double CAR_WIDTH = 40;
     private static final double CAR_HEIGHT = 17;
-    private static final long ANIMATION_INTERVAL_NANOS = 15_000_000L;
-    private static final int ANIMATION_STEP = 5;
+    private static final double LIGHT_RADIUS = 2.5;
+    private static final double LIGHT_SIDE_OFFSET = 4;
+    private static final double LIGHT_FRONT_OFFSET = 1;
+    private static final long ANIMATION_INTERVAL_NANOS = 30_000_000L;
+    private static final int PATH_STEP = 5;
     private static final double START_X = 0;
     private static final double START_Y = 0;
+    private static final double EXIT_LEFT = 430;
+    private static final double EXIT_TOP = 314;
+    private static final double EXIT_BOTTOM = 343;
 
     private CarMazeScreen() {
     }
@@ -41,7 +49,11 @@ final class CarMazeScreen {
         car.setX(START_X);
         car.setY(START_Y);
 
-        Pane root = new Pane(maze, car);
+        Circle leftLight = createHeadlight();
+        Circle rightLight = createHeadlight();
+        updateHeadlights(leftLight, rightLight, car, 0);
+
+        Pane root = new Pane(maze, car, leftLight, rightLight);
         root.setFocusTraversable(true);
 
         Button autoSolveButton = new Button("Auto Solve");
@@ -68,15 +80,12 @@ final class CarMazeScreen {
                     return;
                 }
 
-                for (int step = 0;
-                     step < ANIMATION_STEP && nextPathPosition[0] < path[0].size();
-                     step++) {
-                    Position current = new Position((int) car.getX(), (int) car.getY());
-                    Position next = path[0].get(nextPathPosition[0]++);
-                    updateHeading(car, current, next);
-                    car.setX(next.x);
-                    car.setY(next.y);
-                }
+                Position current = new Position((int) car.getX(), (int) car.getY());
+                Position next = path[0].get(nextPathPosition[0]++);
+                updateHeading(car, current, next);
+                car.setX(next.x);
+                car.setY(next.y);
+                updateHeadlights(leftLight, rightLight, car, car.getRotate());
             }
         };
 
@@ -85,6 +94,7 @@ final class CarMazeScreen {
             car.setX(START_X);
             car.setY(START_Y);
             car.setRotate(0);
+            updateHeadlights(leftLight, rightLight, car, 0);
             path[0] = findPath(car, mazePixels, mazeImage);
             nextPathPosition[0] = 1;
             lastAnimationUpdate[0] = 0;
@@ -109,12 +119,13 @@ final class CarMazeScreen {
                 return;
             }
 
+            Position current = new Position((int) car.getX(), (int) car.getY());
+            Position next = new Position((int) nextX, (int) nextY);
             if (canMove(car, nextX, nextY, mazePixels, mazeImage)) {
-                Position current = new Position((int) car.getX(), (int) car.getY());
-                Position next = new Position((int) nextX, (int) nextY);
                 updateHeading(car, current, next);
                 car.setX(nextX);
                 car.setY(nextY);
+                updateHeadlights(leftLight, rightLight, car, car.getRotate());
             }
         });
 
@@ -133,6 +144,40 @@ final class CarMazeScreen {
         }
     }
 
+    private static Circle createHeadlight() {
+        Circle headlight = new Circle(LIGHT_RADIUS, Color.YELLOW);
+        headlight.setStroke(Color.GOLD);
+        return headlight;
+    }
+
+    private static void updateHeadlights(Circle leftLight, Circle rightLight,
+                                         ImageView car, double heading) {
+        double x = car.getX();
+        double y = car.getY();
+
+        if (heading == 0) {
+            leftLight.setCenterX(x + CAR_WIDTH + LIGHT_FRONT_OFFSET);
+            leftLight.setCenterY(y + LIGHT_SIDE_OFFSET);
+            rightLight.setCenterX(x + CAR_WIDTH + LIGHT_FRONT_OFFSET);
+            rightLight.setCenterY(y + CAR_HEIGHT - LIGHT_SIDE_OFFSET);
+        } else if (heading == 180) {
+            leftLight.setCenterX(x - LIGHT_FRONT_OFFSET);
+            leftLight.setCenterY(y + LIGHT_SIDE_OFFSET);
+            rightLight.setCenterX(x - LIGHT_FRONT_OFFSET);
+            rightLight.setCenterY(y + CAR_HEIGHT - LIGHT_SIDE_OFFSET);
+        } else if (heading == 90) {
+            leftLight.setCenterX(x + CAR_WIDTH / 2 - (CAR_HEIGHT / 2 - LIGHT_SIDE_OFFSET));
+            leftLight.setCenterY(y + CAR_HEIGHT / 2 + CAR_WIDTH / 2 + LIGHT_FRONT_OFFSET);
+            rightLight.setCenterX(x + CAR_WIDTH / 2 + (CAR_HEIGHT / 2 - LIGHT_SIDE_OFFSET));
+            rightLight.setCenterY(y + CAR_HEIGHT / 2 + CAR_WIDTH / 2 + LIGHT_FRONT_OFFSET);
+        } else {
+            leftLight.setCenterX(x + CAR_WIDTH / 2 - (CAR_HEIGHT / 2 - LIGHT_SIDE_OFFSET));
+            leftLight.setCenterY(y + CAR_HEIGHT / 2 - CAR_WIDTH / 2 - LIGHT_FRONT_OFFSET);
+            rightLight.setCenterX(x + CAR_WIDTH / 2 + (CAR_HEIGHT / 2 - LIGHT_SIDE_OFFSET));
+            rightLight.setCenterY(y + CAR_HEIGHT / 2 - CAR_WIDTH / 2 - LIGHT_FRONT_OFFSET);
+        }
+    }
+
     private static List<Position> findPath(ImageView car, PixelReader mazePixels, Image mazeImage) {
         Position start = new Position((int) car.getX(), (int) car.getY());
         ArrayDeque<Position> queue = new ArrayDeque<>();
@@ -141,10 +186,10 @@ final class CarMazeScreen {
         previous.put(start, null);
 
         int[][] directions = {
-                {1, 0},
-                {-1, 0},
-                {0, 1},
-                {0, -1}
+                {PATH_STEP, 0},
+                {-PATH_STEP, 0},
+                {0, PATH_STEP},
+                {0, -PATH_STEP}
         };
 
         Position exit = null;
@@ -185,8 +230,12 @@ final class CarMazeScreen {
         double rightEdge = position.x + CAR_WIDTH - CAR_MARGIN;
         double centerY = position.y + CAR_HEIGHT / 2.0;
 
-        return rightEdge >= mazeImage.getWidth() - 1
-                && isWalkable(mazeImage.getWidth() - 1, centerY, mazePixels, mazeImage);
+        return rightEdge >= EXIT_LEFT - CAR_MARGIN
+                && centerY >= EXIT_TOP
+                && centerY <= EXIT_BOTTOM
+                && isWalkable(rightEdge, position.y + CAR_MARGIN, mazePixels, mazeImage)
+                && isWalkable(rightEdge, position.y + CAR_HEIGHT - CAR_MARGIN,
+                mazePixels, mazeImage);
     }
 
     private static boolean canMove(ImageView car, double x, double y,
@@ -213,7 +262,10 @@ final class CarMazeScreen {
             return false;
         }
 
-        return mazePixels.getColor(pixelX, pixelY).getBrightness() > 0.8;
+        Color color = mazePixels.getColor(pixelX, pixelY);
+        return color.getRed() > 0.8
+                && color.getGreen() > 0.8
+                && color.getBlue() > 0.8;
     }
 
     private static class Position {
