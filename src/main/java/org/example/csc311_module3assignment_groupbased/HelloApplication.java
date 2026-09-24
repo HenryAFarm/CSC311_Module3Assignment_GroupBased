@@ -61,9 +61,9 @@ import java.util.Map;
 public class HelloApplication extends Application {
     private static final double MOVE_DISTANCE = 5;
     private static final double ROBOT_MARGIN = 1;
-    private static final long ANIMATION_INTERVAL_NANOS = 60_000_000L;
-    private static final double START_X = 45;
-    private static final double START_Y = 35;
+    private static final long ANIMATION_INTERVAL_NANOS = 15_000_000L;
+    private static final double START_X = 15;
+    private static final double START_Y = 260;
 
     @Override
     public void start(Stage stage) {
@@ -165,15 +165,15 @@ public class HelloApplication extends Application {
         Position exit = null;
         while (!queue.isEmpty()) {
             Position current = queue.remove();
-            if (isAtExit(current, robot, mazeImage)) {
+            if (isAtExit(current, robot, mazePixels, mazeImage)) {
                 exit = current;
                 break;
             }
 
             for (int[] direction : directions) {
                 Position next = new Position(
-                        current.x + (int) (direction[0] * MOVE_DISTANCE),
-                        current.y + (int) (direction[1] * MOVE_DISTANCE));
+                        current.x + direction[0],
+                        current.y + direction[1]);
 
                 if (!previous.containsKey(next)
                         && canMove(robot, next.x, next.y, mazePixels, mazeImage)) {
@@ -195,9 +195,13 @@ public class HelloApplication extends Application {
         return path;
     }
 
-    private boolean isAtExit(Position position, ImageView robot, Image mazeImage) {
-        return position.x >= mazeImage.getWidth() - 120
-                && position.y >= mazeImage.getHeight() - 110;
+    private boolean isAtExit(Position position, ImageView robot,
+                              PixelReader mazePixels, Image mazeImage) {
+        double rightEdge = position.x + robot.getImage().getWidth() - ROBOT_MARGIN;
+        double centerY = position.y + robot.getImage().getHeight() / 2.0;
+
+        return rightEdge >= mazeImage.getWidth() - 1
+                && isWalkable(mazeImage.getWidth() - 1, centerY, mazePixels, mazeImage);
     }
 
     private boolean canMove(ImageView robot, double x, double y,
