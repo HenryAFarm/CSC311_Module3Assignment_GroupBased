@@ -56,17 +56,15 @@ public class HelloApplication extends Application {
             //Since this is testing, it will change!
             //Testing to see the image(of robot) popping up!
             //This gets the image from resource under images
-            Image image = new Image(getClass().getResourceAsStream("/images/robot.png"));
-            ImageView robot = new ImageView(image);
+            Pane root = RobotMazeScreen.createContent();
 
-            robot.setX(100);
-            robot.setY(100);
+            Scene scene = new Scene(root, 620, 470);
 
-            Pane root = new Pane(robot);
-            Scene scene = new Scene(root, 800, 600);
-
+            stage.setTitle("Robot Maze");
             stage.setScene(scene);
             stage.show();
+
+            root.requestFocus();
         }
 
 }
