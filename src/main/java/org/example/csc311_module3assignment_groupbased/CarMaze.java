@@ -9,6 +9,9 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Polygon;
 import javafx.scene.shape.Rectangle;
+import javafx.animation.AnimationTimer;
+
+import java.util.*;
 
 public class CarMaze {
     private static final double MOVE_DISTANCE = 5;
@@ -106,6 +109,54 @@ public class CarMaze {
 
         root.requestFocus();
 
+        List<double[]> path = findPath(car, pixels, mazeImage);
+
+        AnimationTimer timer = new AnimationTimer() {
+
+            private int index = 0;
+            private long lastMove = 0;
+
+            @Override
+            public void handle(long now) {
+
+                if (index >= path.size()) {
+                    stop();
+                    return;
+                }
+
+                if (now - lastMove < 50_000_000) {
+                    return;
+                }
+
+                double[] position = path.get(index);
+
+                double oldX = car.getLayoutX();
+                double oldY = car.getLayoutY();
+
+                car.setLayoutX(position[0]);
+                car.setLayoutY(position[1]);
+
+                // Change car direction
+                if (position[0] > oldX) {
+                    car.setRotate(0);
+                }
+                else if (position[0] < oldX) {
+                    car.setRotate(180);
+                }
+                else if (position[1] < oldY) {
+                    car.setRotate(270);
+                }
+                else if (position[1] > oldY) {
+                    car.setRotate(90);
+                }
+
+                index++;
+                lastMove = now;
+            }
+        };
+
+        timer.start();
+
         return root;
     }
 
@@ -152,12 +203,115 @@ public class CarMaze {
 
         Color color = pixels.getColor(pixelX, pixelY);
 
-        // Blue walls are not allowed
-        if (color.getBlue() > color.getRed() + 0.1
-                && color.getBlue() > color.getGreen() + 0.1) {
+        if (color.getRed() < 0.2
+                && color.getGreen() < 0.3
+                && color.getBlue() > 0.5) {
             return false;
         }
 
         return true;
+    }
+
+    private static boolean isExit(
+            double x,
+            double y,
+            PixelReader pixels,
+            Image mazeImage) {
+
+        int pixelX = (int) x;
+        int pixelY = (int) y;
+
+        if (pixelX < 0 || pixelY < 0
+                || pixelX >= mazeImage.getWidth()
+                || pixelY >= mazeImage.getHeight()) {
+
+            return false;
+        }
+
+        Color color = pixels.getColor(pixelX, pixelY);
+
+        // Purple exit
+        return color.getRed() > 0.3
+                && color.getBlue() > 0.3
+                && color.getGreen() < 0.3;
+    }
+
+    private static List<double[]> findPath(
+            Pane car,
+            PixelReader pixels,
+            Image mazeImage) {
+
+        Queue<double[]> queue = new LinkedList<>();
+        Map<String, String> previous = new HashMap<>();
+        Map<String, double[]> positions = new HashMap<>();
+
+        double startX = car.getLayoutX();
+        double startY = car.getLayoutY();
+
+        String start = startX + "," + startY;
+
+        queue.add(new double[]{startX, startY});
+        positions.put(start, new double[]{startX, startY});
+
+        double[] directions = {
+                MOVE_DISTANCE, 0,
+                -MOVE_DISTANCE, 0,
+                0, MOVE_DISTANCE,
+                0, -MOVE_DISTANCE
+        };
+
+        String end = null;
+
+        while (!queue.isEmpty()) {
+
+            double[] current = queue.remove();
+
+            double x = current[0];
+            double y = current[1];
+
+            if (isExit(x + 25, y + 10, pixels, mazeImage)) {
+                end = x + "," + y;
+                break;
+            }
+
+            for (int i = 0; i < directions.length; i += 2) {
+
+                double newX = x + directions[i];
+                double newY = y + directions[i + 1];
+
+                if (!canMove(car, newX, newY, pixels, mazeImage)) {
+                    continue;
+                }
+
+                String key = newX + "," + newY;
+
+                if (positions.containsKey(key)) {
+                    continue;
+                }
+
+                positions.put(key, new double[]{newX, newY});
+                previous.put(key, x + "," + y);
+
+                queue.add(new double[]{newX, newY});
+            }
+        }
+
+        List<double[]> path = new ArrayList<>();
+
+        if (end == null) {
+            return path;
+        }
+
+        String current = end;
+
+        while (!current.equals(start)) {
+
+            path.add(positions.get(current));
+            current = previous.get(current);
+        }
+
+        Collections.reverse(path);
+
+        return path;
     }
 }
