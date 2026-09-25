@@ -50,6 +50,10 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.Pane;
 import javafx.stage.Stage;
+import javafx.geometry.Pos;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.layout.VBox;
 
 import java.io.IOException;
 
@@ -71,44 +75,57 @@ public class HelloApplication extends Application {
             root.requestFocus();
         }
 */
+        Pane robotRoot = RobotMazeScreen.createContent();
+        Pane carRoot = CarMaze.createContent();
 
-            Pane robotRoot = RobotMazeScreen.createContent();
-            Pane carRoot = CarMaze.createContent();
+        Label robotLabel = new Label("Robot Maze");
+        Button robotButton = new Button("Robot Ready");
 
-            Tab robotTab = new Tab("Robot Maze", robotRoot);
-            robotTab.setClosable(false);
+        VBox robotBox = new VBox(10);
+        robotBox.setAlignment(Pos.CENTER);
+        robotBox.getChildren().addAll(robotRoot, robotLabel, robotButton);
 
-            Tab carTab = new Tab("Car Maze", carRoot);
-            carTab.setClosable(false);
+        Label carLabel = new Label("Car Maze");
+        Button carButton = new Button("Car Ready");
 
-            TabPane tabPane = new TabPane(robotTab, carTab);
+        VBox carBox = new VBox(10);
+        carBox.setAlignment(Pos.CENTER);
+        carBox.getChildren().addAll(carRoot, carLabel, carButton);
 
-            Scene scene = new Scene(tabPane, 620, 470);
+        Tab robotTab = new Tab("Robot Maze", robotBox);
+        robotTab.setClosable(false);
 
-            scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+        Tab carTab = new Tab("Car Maze", carBox);
+        carTab.setClosable(false);
 
-                if (!isArrowKey(event.getCode())) {
-                    return;
-                }
+        TabPane tabPane = new TabPane(robotTab, carTab);
 
-                Pane selectedRoot =
-                        tabPane.getSelectionModel().getSelectedItem() == carTab
-                                ? carRoot
-                                : robotRoot;
+        Scene scene = new Scene(tabPane, 620, 500);
 
-                if (selectedRoot.getOnKeyPressed() != null) {
-                    selectedRoot.getOnKeyPressed().handle(event);
-                }
+        scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
 
-                event.consume();
-            });
+            if (!isArrowKey(event.getCode())) {
+                return;
+            }
 
-            stage.setTitle("Maze Assignment");
-            stage.setScene(scene);
-            stage.show();
+            Pane selectedRoot =
+                    tabPane.getSelectionModel().getSelectedItem() == carTab
+                            ? carRoot
+                            : robotRoot;
 
-            robotRoot.requestFocus();
-        }
+            if (selectedRoot.getOnKeyPressed() != null) {
+                selectedRoot.getOnKeyPressed().handle(event);
+            }
+
+            event.consume();
+        });
+
+        stage.setTitle("Maze Assignment");
+        stage.setScene(scene);
+        stage.show();
+
+        robotRoot.requestFocus();
+    }
 
         private boolean isArrowKey(KeyCode keyCode) {
             return keyCode == KeyCode.LEFT
