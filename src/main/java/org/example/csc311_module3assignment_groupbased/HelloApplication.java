@@ -7,6 +7,8 @@ import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.PixelReader;
@@ -18,6 +20,7 @@ import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import javafx.animation.PauseTransition;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -49,18 +52,47 @@ public class HelloApplication extends Application {
 
     @Override
     public void start(Stage stage) {
-        MazeWorld world = new MazeWorld("/images/maze.png");
-        BorderPane root = new BorderPane();
-        root.setCenter(world.arena());
-        root.setBottom(world.controls());
+        MazeWorld world1 = new MazeWorld("/images/maze.png");
+        MazeWorld world2 = new MazeWorld("/images/maze2.png");
 
-        Scene scene = new Scene(root, world.width(), world.height() + 32);
-        scene.setOnKeyPressed(event -> world.moveByKey(event.getCode()));
+        TabPane tabs = new TabPane();
+        Tab t1 = new Tab("Maze 1");
+        BorderPane bp1 = new BorderPane();
+        bp1.setCenter(world1.arena());
+        bp1.setBottom(world1.controls());
+        t1.setContent(bp1);
+        t1.setClosable(false);
 
-        stage.setTitle("Step 1 - Robot Maze");
+        Tab t2 = new Tab("Maze 2");
+        BorderPane bp2 = new BorderPane();
+        bp2.setCenter(world2.arena());
+        bp2.setBottom(world2.controls());
+        t2.setContent(bp2);
+        t2.setClosable(false);
+
+        tabs.getTabs().addAll(t1, t2);
+
+        int width = Math.max(world1.width(), world2.width());
+        int height = Math.max(world1.height(), world2.height());
+
+        Scene scene = new Scene(tabs, width, height + 40);
+        scene.setOnKeyPressed(event -> {
+            Tab sel = tabs.getSelectionModel().getSelectedItem();
+            if (sel == t1) world1.moveByKey(event.getCode());
+            else world2.moveByKey(event.getCode());
+        });
+
+        // focus the currently selected world's arena when switching tabs
+        tabs.getSelectionModel().selectedItemProperty().addListener((obs, oldT, newT) -> {
+            if (newT == t1) world1.arena().requestFocus();
+            else world2.arena().requestFocus();
+        });
+
+        stage.setTitle("Step 3 - Car Maze (two mazes)");
         stage.setScene(scene);
         stage.show();
-        world.arena().requestFocus();
+        // initial focus
+        world1.arena().requestFocus();
     }
 
     private enum Direction {
@@ -101,32 +133,72 @@ public class HelloApplication extends Application {
         }
     }
 
-    private static final class RobotActor extends MazeActor {
-        private final ImageView robotView;
+    private static final class CarActor extends MazeActor {
+        private final Pane carView;
+        private final int w;
+        private final int h;
 
-        RobotActor(double x, double y) {
+        CarActor(double x, double y) {
             super(x, y);
-            robotView = new ImageView(new Image(HelloApplication.class.getResourceAsStream("/images/robot.png")));
-            robotView.setFitWidth(26);
-            robotView.setFitHeight(26);
-            robotView.setPreserveRatio(true);
-            robotView.setLayoutX(x);
-            robotView.setLayoutY(y);
+            // Car dimensions roughly match previous robot sprite
+            this.w = 26;
+            this.h = 26;
+            carView = new Pane();
+            carView.setPrefSize(w, h);
+
+            javafx.scene.shape.Rectangle body = new javafx.scene.shape.Rectangle(6, 6, 14, 10);
+            body.setArcWidth(6);
+            body.setArcHeight(6);
+            body.setFill(Color.DARKRED);
+
+            javafx.scene.shape.Rectangle cabin = new javafx.scene.shape.Rectangle(9, 2, 8, 6);
+            cabin.setFill(Color.LIGHTBLUE);
+
+            javafx.scene.shape.Circle wheel1 = new javafx.scene.shape.Circle(8, 18, 3);
+            wheel1.setFill(Color.BLACK);
+            javafx.scene.shape.Circle wheel2 = new javafx.scene.shape.Circle(18, 18, 3);
+            wheel2.setFill(Color.BLACK);
+
+            javafx.scene.shape.Polygon nose = new javafx.scene.shape.Polygon();
+            nose.getPoints().addAll(20.0, 11.0, 25.0, 13.0, 20.0, 15.0);
+            nose.setFill(Color.DARKRED.darker());
+
+            carView.getChildren().addAll(body, cabin, wheel1, wheel2, nose);
+            carView.setLayoutX(x);
+            carView.setLayoutY(y);
         }
 
         @Override
         Node node() {
-            return robotView;
+            return carView;
         }
 
         @Override
         int width() {
-            return (int) Math.ceil(robotView.getFitWidth());
+            return w;
         }
 
         @Override
         int height() {
-            return (int) Math.ceil(robotView.getFitHeight());
+            return h;
+        }
+
+        void setHeading(Direction dir) {
+            if (dir == null) return;
+            switch (dir) {
+                case RIGHT:
+                    carView.setRotate(0);
+                    break;
+                case DOWN:
+                    carView.setRotate(90);
+                    break;
+                case LEFT:
+                    carView.setRotate(180);
+                    break;
+                case UP:
+                    carView.setRotate(270);
+                    break;
+            }
         }
     }
 
@@ -136,16 +208,18 @@ public class HelloApplication extends Application {
         private final ImageView mazeView;
         private final Pane arena;
         private Label status;
-        private final RobotActor robot;
+        private final MazeActor robot;
         private final HBox controls;
         private Timeline autoTimeline;
+        private int startX;
+        private int startY;
 
         MazeWorld(String mazeResourcePath) {
             mazeImage = new Image(HelloApplication.class.getResourceAsStream(mazeResourcePath));
             pixels = mazeImage.getPixelReader();
             mazeView = new ImageView(mazeImage);
 
-            robot = new RobotActor(0, 0);
+            robot = new CarActor(0, 0);
             Label localStatus = new Label("Use arrow keys. Movement is blocked by maze walls.");
             int startX = 0, startY = 0;
             if (USE_START_OVERRIDE) {
@@ -196,11 +270,16 @@ public class HelloApplication extends Application {
             startX = (int) (Math.round(startX / (double) STEP) * STEP);
             startY = (int) (Math.round(startY / (double) STEP) * STEP);
             robot.moveTo(startX, startY);
+            // persist start coordinates for resets
+            this.startX = startX;
+            this.startY = startY;
             this.status = localStatus;
 
             Button autoSolve = new Button("Auto Solve");
             autoSolve.setOnAction(event -> autoSolve());
-            controls = new HBox(10, autoSolve, status);
+            Button reset = new Button("Reset");
+            reset.setOnAction(ev -> resetToStart());
+            controls = new HBox(10, autoSolve, reset, status);
             arena = new Pane(mazeView, robot.node());
             arena.setPrefSize(mazeImage.getWidth(), mazeImage.getHeight());
             arena.setFocusTraversable(true);
@@ -253,6 +332,9 @@ public class HelloApplication extends Application {
             double ny = robot.y + direction.dy;
             if (canOccupy(nx, ny)) {
                 robot.moveTo(nx, ny);
+                if (robot instanceof CarActor) {
+                    ((CarActor) robot).setHeading(direction);
+                }
                 status.setText(String.format("Robot at (%.0f, %.0f)", robot.x, robot.y));
             } else {
                 status.setText("Blocked by wall.");
@@ -335,6 +417,9 @@ public class HelloApplication extends Application {
                 if (step == null) {
                     stopAutoIfRunning();
                     status.setText("Auto-solve complete.");
+                    PauseTransition pause = new PauseTransition(Duration.millis(600));
+                    pause.setOnFinished(ev -> resetToStart());
+                    pause.play();
                     return;
                 }
                 tryMove(step);
@@ -348,6 +433,17 @@ public class HelloApplication extends Application {
                 autoTimeline.stop();
                 autoTimeline = null;
             }
+        }
+
+        private void resetToStart() {
+            stopAutoIfRunning();
+            robot.moveTo(startX, startY);
+            if (robot instanceof CarActor) {
+                // clear heading (optional)
+                ((CarActor) robot).setHeading(null);
+            }
+            status.setText(String.format("Reset to start (%d,%d)", startX, startY));
+            arena.requestFocus();
         }
 
         private void floodFill(int sx, int sy, Map<String, String> parent,
