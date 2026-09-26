@@ -44,29 +44,93 @@ import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.Pane;
 import javafx.stage.Stage;
+import javafx.geometry.Pos;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.layout.VBox;
 
 import java.io.IOException;
 
 public class HelloApplication extends Application {
-        @Override
-        public void start(Stage stage) {
+    @Override
+    public void start(Stage stage) {
 
-            //Since this is testing, it will change!
-            //Testing to see the image(of robot) popping up!
-            //This gets the image from resource under images
-            Image image = new Image(getClass().getResourceAsStream("/images/robot.png"));
-            ImageView robot = new ImageView(image);
+        //Since this is testing, it will change!
+        //Testing to see the image(of robot) popping up!
+        //This gets the image from resource under images
 
-            robot.setX(100);
-            robot.setY(100);
-
-            Pane root = new Pane(robot);
-            Scene scene = new Scene(root, 800, 600);
-
+        //Pane root = RobotMazeScreen.createContent();
+        //Scene scene = new Scene(root, 620, 470);
+/*
+            stage.setTitle("Robot Maze");
             stage.setScene(scene);
             stage.show();
-        }
 
-}
+            root.requestFocus();
+        }
+*/
+        Pane robotRoot = RobotMazeScreen.createContent();
+        Pane carRoot = CarMaze.createContent();
+
+        Label robotLabel = new Label("Robot Maze");
+        Button robotButton = new Button("Robot Ready");
+
+        VBox robotBox = new VBox(10);
+        robotBox.setAlignment(Pos.CENTER);
+        robotBox.getChildren().addAll(robotRoot, robotLabel, robotButton);
+
+        Label carLabel = new Label("Car Maze");
+        Button carButton = new Button("Car Ready");
+
+        VBox carBox = new VBox(10);
+        carBox.setAlignment(Pos.CENTER);
+        carBox.getChildren().addAll(carRoot, carLabel, carButton);
+
+        Tab robotTab = new Tab("Robot Maze", robotBox);
+        robotTab.setClosable(false);
+
+        Tab carTab = new Tab("Car Maze", carBox);
+        carTab.setClosable(false);
+
+        TabPane tabPane = new TabPane(robotTab, carTab);
+
+        Scene scene = new Scene(tabPane, 620, 500);
+
+        scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+
+            if (!isArrowKey(event.getCode())) {
+                return;
+            }
+
+            Pane selectedRoot =
+                    tabPane.getSelectionModel().getSelectedItem() == carTab
+                            ? carRoot
+                            : robotRoot;
+
+            if (selectedRoot.getOnKeyPressed() != null) {
+                selectedRoot.getOnKeyPressed().handle(event);
+            }
+
+            event.consume();
+        });
+
+        stage.setTitle("Maze Assignment");
+        stage.setScene(scene);
+        stage.show();
+
+        robotRoot.requestFocus();
+    }
+
+        private boolean isArrowKey(KeyCode keyCode) {
+            return keyCode == KeyCode.LEFT
+                    || keyCode == KeyCode.RIGHT
+                    || keyCode == KeyCode.UP
+                    || keyCode == KeyCode.DOWN;
+        }
+    }
